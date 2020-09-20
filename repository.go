@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -21,6 +22,7 @@ func NewRepository() (Repository, error) {
 		return Repository{}, nil
 	}
 	proxyCollection := client.Database("local").Collection("proxy")
+
 	return Repository{
 		proxyCollection: proxyCollection,
 	}, nil
@@ -34,4 +36,18 @@ func (r Repository) AddProxyInfo(ctx context.Context, info ProxyInfo) error {
 	}
 	log.Info().Msgf("Добавил новую запись для проксей %s", res)
 	return nil
+}
+
+func (r Repository) GetLastProxyInfo(ctx context.Context, userId string) (ProxyInfo, error) {
+
+	var res ProxyInfo
+	queryOptions := options.FindOneOptions{}
+	queryOptions.SetSort(bson.M{"$natural": -1})
+	query := bson.D{{"userid", userId}}
+	err := r.proxyCollection.FindOne(ctx, query, &queryOptions).Decode(&res)
+
+	if err != nil {
+		return ProxyInfo{}, err
+	}
+	return res, nil
 }
